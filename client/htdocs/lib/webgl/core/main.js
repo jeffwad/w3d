@@ -2,37 +2,40 @@
 
 define("/lib/webgl/core/main",
 
-	["object","/lib/webgl/core/utils","/lib/webgl/shaders/vertex.gl","/lib/webgl/shaders/fragment.gl"],
+	["object","iter","/lib/webgl/core/glMatrix","/lib/webgl/core/modelView","/lib/webgl/core/camera","/lib/webgl/shaders/vertex.gl","/lib/webgl/shaders/fragment.gl"],
 
 	function(require, exports, module) {
 
 		var object				= require("object"),
-			utils				= require("/lib/webgl/core/utils"),
+			some				= require("iter").some,
+			glMatrix			= require("/lib/webgl/core/glMatrix"),
+			modelView			= require("/lib/webgl/core/modelView"),
+			camera				= require("/lib/webgl/core/camera"),
 			vertex				= require("/lib/webgl/shaders/vertex.gl"),
 			fragment			= require("/lib/webgl/shaders/fragment.gl"),
+			vec3				= glMatrix.vec3,
+			mat4				= glMatrix.mat4,
+			quat4				= glMatrix.quat4,
+			degToRad			= glMatrix.degToRad,
 			gl,
 			program,
 			uniforms,
 			attributes,
 			objects,
-			modelViewMatrix,
-			perspectiveMatrix,
+			pMatrix,
 			createShader,
 			createProgram,
 			getContext,
-			loadIdentity,
-			multMatrix,
-			mvTranslate,
-			perspective,
-			setMatrixUniforms,
-			modelViewMatrixStack;
+			setMatrixUniforms;
 		
 		
+		//	we have no gl at this point
+		gl = false;
 		
+		//	containers
 		attributes = {};
 		uniforms = {};
 		objects = [];
-		modelViewMatrixStack = [];
 		
 		createShader = function(type, src) {
 		
@@ -83,58 +86,10 @@ define("/lib/webgl/core/main",
 		
 		};
 		
-		modelViewMatrixStack = [];
-		
-		function mvPushMatrix(m) {
-			if (m) {
-				modelViewMatrixStack.push(m.dup());
-				modelViewMatrix = m.dup();
-			}
-			else {
-				modelViewMatrixStack.push(modelViewMatrix.dup());
-			}
-		}
-		
-		function mvPopMatrix() {
-			if (modelViewMatrixStack.length == 0) {
-				throw "Invalid popMatrix!";
-			}
-			modelViewMatrix = modelViewMatrixStack.pop();
-			return modelViewMatrix;
-		}
-		
-		
-		function loadIdentity() {
-			modelViewMatrix = Matrix.I(4);
-		}
-		
-		
-		function multMatrix(m) {
-			modelViewMatrix = modelViewMatrix.x(m);
-		}
-		
-		
-		function mvTranslate(v) {
-			var m = Matrix.Translation($V([v[0], v[1], v[2]])).ensure4x4();
-			multMatrix(m);
-		}
-		
-		function mvRotate(ang, v) {
-			var arad = ang * Math.PI / 180.0;
-			var m = Matrix.Rotation(arad, $V([v[0], v[1], v[2]])).ensure4x4();
-			multMatrix(m);
-		}
-		
-		
-		function perspective(fovy, aspect, znear, zfar) {
-			perspectiveMatrix = makePerspective(fovy, aspect, znear, zfar);
-		}
-		
-		
 		function setMatrixUniforms() {
 			try {
-				gl.uniformMatrix4fv(uniforms.uPMatrix, false, new Float32Array(perspectiveMatrix.flatten()));
-				gl.uniformMatrix4fv(uniforms.uMVMatrix, false, new Float32Array(modelViewMatrix.flatten()));
+				gl.uniformMatrix4fv(uniforms.uPMatrix, false, new Float32Array(camera.matrix));
+				gl.uniformMatrix4fv(uniforms.uMVMatrix, false, new Float32Array(modelView.matrix));
 			}
 			catch(e) {
 				alert(e)
@@ -144,84 +99,88 @@ define("/lib/webgl/core/main",
 		
 		getContext = function(canvas) {
 		
-			try {
-				gl = canvas.getContext("experimental-webgl");
-				gl.viewportWidth = parseFloat(canvas.style.width, 10);
-				gl.viewportHeight = parseFloat(canvas.style.height, 10);
+			if(!some(["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"], function(name) {
+				try {
+					gl = canvas.getContext(name);
+					gl.viewportWidth = parseFloat(canvas.style.width, 10);
+					gl.viewportHeight = parseFloat(canvas.style.height, 10);
 		
-				canvas.addEventListener("webglcontextcreationerror", function(e) {
-					console.error(e.statusMessage);
-				}, false);
-			}
-			catch(e) {
+					canvas.addEventListener("webglcontextcreationerror", function(e) {
+						console.error(e.statusMessage);
+					}, false);
+				}
+				catch(e) {}
+				if(gl) {
+			  		return true;
+				}
+				return false;
+			})) {
 				throw new Error("Could not initialise WebGL, sorry :-(");
 			}
 		
 		};
 		
-		  function createRotationMatrix(angle, v) {
-		    var arad = angle * Math.PI / 180.0;
-		    return Matrix.Rotation(arad, $V([v[0], v[1], v[2]])).ensure4x4();
-		  }
+		var mouseDown = false;
+		var lastMouseX = null;
+		var lastMouseY = null;
 		
+		var moonRotationMatrix = mat4.create();
+		mat4.identity(moonRotationMatrix);
 		
-		  var mouseDown = false;
-		  var lastMouseX = null;
-		  var lastMouseY = null;
-		
-		  var moonRotationMatrix = Matrix.I(4);
-		
-		  function handleMouseDown(event) {
+		function handleMouseDown(event) {
 		    mouseDown = true;
 		    lastMouseX = event.clientX;
 		    lastMouseY = event.clientY;
-		  }
+		}
 		
 		
-		  function handleMouseUp(event) {
+		function handleMouseUp(event) {
 		    mouseDown = false;
-		  }
+		}
 		
-		y = -30;
-		  function handleMouseMove(event) {
+		
+		function handleMouseMove(event) {
 		    if (!mouseDown) {
-		      return;
+		        return;
 		    }
 		    var newX = event.clientX;
 		    var newY = event.clientY;
 		
 		    var deltaX = newX - lastMouseX
-		    var newRotationMatrix = createRotationMatrix(deltaX / 10, [0, 1, 0]);
+		    var newRotationMatrix = mat4.create();
+		    mat4.identity(newRotationMatrix);
+		    mat4.rotate(newRotationMatrix, degToRad(deltaX / 10), [0, 1, 0]);
 		
 		    var deltaY = newY - lastMouseY;
-		    newRotationMatrix = newRotationMatrix.x(createRotationMatrix(deltaY / 10, [1, 0, 0]));
+		    mat4.rotate(newRotationMatrix, degToRad(deltaY / 10), [1, 0, 0]);
 		
-		    moonRotationMatrix = newRotationMatrix.x(moonRotationMatrix);
+		    mat4.multiply(newRotationMatrix, moonRotationMatrix, moonRotationMatrix);
 		
 		    lastMouseX = newX
 		    lastMouseY = newY;
-			y = newY;
-		  }
+		}
 		
 		
 		render = function() {
+		
+			requestAnimFrame(render);
 		
 			var i;
 		
 			//	reset
 			gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
 			gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+			
+			//mat4.identity(modelView.matrix);
+			camera.identity();
 		
-			perspective(45, gl.viewportWidth / gl.viewportHeight, 1, 10000.0);
-			loadIdentity();
-		
-			//	move the camera
-			mvRotate(0, [1, 0, 0]);
-			mvRotate(-30, [0, 1, 0]);
-			mvRotate(0, [0, 0, 1]);	
-			mvTranslate([-30, -8, -30.0])
-		
-			multMatrix(moonRotationMatrix);
+			//	move the camera to it's initial position
+			//mat4.rotate(modelView.matrix, degToRad(-30), [0, 1, 0]);	
+			camera.rotateY(-30);
+			//mat4.translate(modelView.matrix, [-30, -8, -30.0]);
+			camera.translate([-30, -8, -30]);
+			
+			mat4.multiply(modelView.matrix, moonRotationMatrix);
 		
 			//	render objects
 			for(i = 0, l = objects.length; i < l; i++) {
@@ -256,9 +215,9 @@ define("/lib/webgl/core/main",
 		
 			render: function() {
 		
-				mvPushMatrix();
+				modelView.push();
 		
-				mvTranslate(this.position);
+				mat4.translate(modelView.matrix, this.position);
 		
 				gl.bindBuffer(gl.ARRAY_BUFFER, this.vBuffer);
 				gl.vertexAttribPointer(attributes.aVertexPosition, this.size, gl.FLOAT, false, 0, 0);
@@ -272,7 +231,7 @@ define("/lib/webgl/core/main",
 		
 				gl.drawElements(this.type, this.indices.length, gl.UNSIGNED_SHORT, 0);
 		
-				mvPopMatrix();
+				modelView.pop();
 		
 			}
 		
@@ -306,9 +265,10 @@ define("/lib/webgl/core/main",
 		
 			render: function() {
 		
-				mvPushMatrix();
-				mvTranslate(this.position);
-		
+				modelView.push();
+			
+				mat4.translate(modelView.matrix, this.position);
+				
 				gl.bindBuffer(gl.ARRAY_BUFFER, this.vBuffer);
 				gl.vertexAttribPointer(attributes.aVertexPosition, this.size, gl.FLOAT, false, 0, 0);
 		
@@ -318,7 +278,8 @@ define("/lib/webgl/core/main",
 				gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iBuffer);
 				setMatrixUniforms();
 				gl.drawElements(this.type, this.indices.length, gl.UNSIGNED_SHORT, 0);
-				mvPopMatrix();
+		
+				modelView.pop();
 		
 			}
 		
@@ -335,6 +296,9 @@ define("/lib/webgl/core/main",
 		
 		    gl.enable(gl.DEPTH_TEST);
 		    gl.depthFunc(gl.LEQUAL);
+		
+		
+			camera.init(gl.viewportWidth, gl.viewportHeight);
 		
 		//*
 			object.create(exports.line, {
@@ -378,9 +342,26 @@ define("/lib/webgl/core/main",
 		    document.onmousemove = handleMouseMove;
 		
 		
-			setInterval(render, 1000/60);
+			render();
 			
 		};
+		
+		/**
+		 * Provides requestAnimationFrame in a cross browser way.
+		 */
+		window.requestAnimFrame = (function() {
+		  return window.requestAnimationFrame ||
+		         window.webkitRequestAnimationFrame ||
+		         window.mozRequestAnimationFrame ||
+		         window.oRequestAnimationFrame ||
+		         window.msRequestAnimationFrame ||
+		         function(/* function FrameRequestCallback */ callback, /* DOMElement Element */ element) {
+		           window.setTimeout(callback, 1000/60);
+		         };
+		})();
+		
+		
+		
 		
 		
 	}
