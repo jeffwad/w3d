@@ -2,41 +2,70 @@
 
 define("/app/main",
 
-	["sys","object","/lib/webgl/core/main"],
+	["sys","object","/lib/webgl/core/main","/lib/webgl/shaders/vertex.gl","/lib/webgl/shaders/fragment.gl"],
 
 	function(require, exports, module) {
 
 		var sys 				= require("sys"),
 			object				= require("object"),
-			gl					= require("/lib/webgl/core/main");
+			gl					= require("/lib/webgl/core/main"),
+			vertex				= require("/lib/webgl/shaders/vertex.gl"),
+			fragment			= require("/lib/webgl/shaders/fragment.gl");
+		
 		
 		var canvas = document.createElement("canvas");
 		canvas.width = self.innerWidth;
 		canvas.height = self.innerHeight;
-		canvas.style.margin = 0;
-		canvas.style.padding = 0;
 		canvas.style.width = self.innerWidth + "px";
 		canvas.style.height = self.innerHeight + "px";
 		document.body.style.margin = 0;
 		document.body.style.padding = 0;
 		document.body.appendChild(canvas);
 		
+		
 		gl.init(canvas);
 		
-		/*object.create(gl.mesh, {
-			position: [-1.5, 0.0, -7.0],
+		gl.program(vertex, fragment);
+		
+		//	set the axis
+		object.create(gl.line, {
+			position: [0.0, 0.0, 0.0],
 			vertices: [
-		         0.0,  1.0,  0.0,
-		        -1.0, -1.5,  0.0,
-		         1.0, -1.0,  0.0
-		    ],
-				size: 3,
-			items: 3
+		    	-1000000.0, 0.0, 0.0,
+				1000000.0, 0.0, 0.0
+			],
+			colours: [1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0],
+			size: 3,
+			items: 2
 		});
-		*/
+		// */	
+		//*
+		object.create(gl.line, {
+			position: [0.0, 0.0, 0.0],
+			vertices: [
+		    	0.0, -1000000.0, 0.0,
+				0.0, 1000000.0, 0.0
+			],
+			colours: [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0],
+			size: 3,
+			items: 2
+		});	
+		// */
+		//*
+		object.create(gl.line, {
+			position: [0.0, 0.0, 0.0],
+			vertices: [
+		    	0.0, 0.0, 1000000.0,
+				0.0, 0.0, -1000000.0
+			],
+			colours: [0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+			size: 3,
+			items: 2
+		});	
 		
 		
 		
+		//	create the test cube
 		var colours = [
 		      [1.0, 0.0, 0.0, 1.0],     // Front face
 		      [1.0, 1.0, 0.0, 1.0],     // Back face
@@ -106,6 +135,20 @@ define("/app/main",
 			colours: unpackedColours
 		
 		});
+		
+		//	bind camera moves
+		canvas.addEventListener("mousedown", function(e) {
+			gl.camera.startRotation(e);
+			document.addEventListener("mousemove", gl.camera.rotateXYByMouse, false);
+		});
+		document.addEventListener("mouseup", function(e) {
+			document.removeEventListener("mousemove", gl.camera.rotateXYByMouse, false);
+			gl.camera.stopRotation(e);
+		});
+		
+		gl.run();
+		
+		
 		// */
 		
 	}

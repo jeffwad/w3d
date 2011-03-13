@@ -2,7 +2,7 @@
 
 define("/lib/webgl/core/main",
 
-	["object","iter","/lib/webgl/core/glMatrix","/lib/webgl/core/modelView","/lib/webgl/core/camera","/lib/webgl/shaders/vertex.gl","/lib/webgl/shaders/fragment.gl"],
+	["object","iter","/lib/webgl/core/glMatrix","/lib/webgl/core/modelView","/lib/webgl/core/camera","/lib/webgl/core/line","/lib/webgl/core/mesh"],
 
 	function(require, exports, module) {
 
@@ -11,8 +11,8 @@ define("/lib/webgl/core/main",
 			glMatrix			= require("/lib/webgl/core/glMatrix"),
 			modelView			= require("/lib/webgl/core/modelView"),
 			camera				= require("/lib/webgl/core/camera"),
-			vertex				= require("/lib/webgl/shaders/vertex.gl"),
-			fragment			= require("/lib/webgl/shaders/fragment.gl"),
+			//line				= require("/lib/webgl/core/line"),
+			//mesh				= require("/lib/webgl/core/mesh"),
 			vec3				= glMatrix.vec3,
 			mat4				= glMatrix.mat4,
 			quat4				= glMatrix.quat4,
@@ -22,11 +22,11 @@ define("/lib/webgl/core/main",
 			uniforms,
 			attributes,
 			objects,
-			pMatrix,
 			createShader,
 			createProgram,
 			getContext,
-			setMatrixUniforms;
+			setMatrixUniforms,
+			render;
 		
 		
 		//	we have no gl at this point
@@ -37,6 +37,8 @@ define("/lib/webgl/core/main",
 		uniforms = {};
 		objects = [];
 		
+		
+		//	creates and compiles a shader from source
 		createShader = function(type, src) {
 		
 			var shader;
@@ -56,39 +58,10 @@ define("/lib/webgl/core/main",
 		};
 		
 		
-		createProgram = function() {
 		
-			//	create the prgram, attach the shaders and link
-			program = gl.createProgram();
-		
-		    gl.attachShader(program, createShader("vertex", vertex));
-		    gl.attachShader(program, createShader("fragment", fragment));
-		    gl.linkProgram(program);
-		
-			//	did it work
-		    if(!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-				throw new Error("Could not initialise shaders");
-		    }
-			
-			//	bind the current program
-			gl.useProgram(program);
-		
-			//	get the attribute locations and enable their arrays
-			attributes.aVertexPosition = gl.getAttribLocation(program, "aVertexPosition");
-			gl.enableVertexAttribArray(attributes.aVertexPosition);
-		
-			attributes.aVertexColour = gl.getAttribLocation(program, "aVertexColour");
-		    gl.enableVertexAttribArray(attributes.aVertexColour);
-		
-			//	get the uniform locations
-			uniforms.uPMatrix = gl.getUniformLocation(program, "uPMatrix");
-			uniforms.uMVMatrix = gl.getUniformLocation(program, "uMVMatrix");
-		
-		};
-		
-		function setMatrixUniforms() {
+		setMatrixUniforms = function () {
 			try {
-				gl.uniformMatrix4fv(uniforms.uPMatrix, false, new Float32Array(camera.matrix));
+				gl.uniformMatrix4fv(uniforms.uPMatrix, false, new Float32Array(camera.perspective));
 				gl.uniformMatrix4fv(uniforms.uMVMatrix, false, new Float32Array(modelView.matrix));
 			}
 			catch(e) {
@@ -120,45 +93,6 @@ define("/lib/webgl/core/main",
 		
 		};
 		
-		var mouseDown = false;
-		var lastMouseX = null;
-		var lastMouseY = null;
-		
-		var moonRotationMatrix = mat4.create();
-		mat4.identity(moonRotationMatrix);
-		
-		function handleMouseDown(event) {
-		    mouseDown = true;
-		    lastMouseX = event.clientX;
-		    lastMouseY = event.clientY;
-		}
-		
-		
-		function handleMouseUp(event) {
-		    mouseDown = false;
-		}
-		
-		
-		function handleMouseMove(event) {
-		    if (!mouseDown) {
-		        return;
-		    }
-		    var newX = event.clientX;
-		    var newY = event.clientY;
-		
-		    var deltaX = newX - lastMouseX
-		    var newRotationMatrix = mat4.create();
-		    mat4.identity(newRotationMatrix);
-		    mat4.rotate(newRotationMatrix, degToRad(deltaX / 10), [0, 1, 0]);
-		
-		    var deltaY = newY - lastMouseY;
-		    mat4.rotate(newRotationMatrix, degToRad(deltaY / 10), [1, 0, 0]);
-		
-		    mat4.multiply(newRotationMatrix, moonRotationMatrix, moonRotationMatrix);
-		
-		    lastMouseX = newX
-		    lastMouseY = newY;
-		}
 		
 		
 		render = function() {
@@ -175,12 +109,13 @@ define("/lib/webgl/core/main",
 			camera.identity();
 		
 			//	move the camera to it's initial position
-			//mat4.rotate(modelView.matrix, degToRad(-30), [0, 1, 0]);	
 			camera.rotateY(-30);
-			//mat4.translate(modelView.matrix, [-30, -8, -30.0]);
 			camera.translate([-30, -8, -30]);
-			
-			mat4.multiply(modelView.matrix, moonRotationMatrix);
+		
+			//	
+			mat4.multiply(modelView.matrix, camera.rotation);
+		
+			//mat4.multiply(modelView.matrix, moonRotationMatrix);
 		
 			//	render objects
 			for(i = 0, l = objects.length; i < l; i++) {
@@ -188,6 +123,59 @@ define("/lib/webgl/core/main",
 			}
 		};
 		
+		
+		//	initialise gl
+		exports.init = function(canvas) {
+		
+			getContext(canvas);
+		
+		    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+		    gl.clearDepth(1.0);
+		
+		    gl.enable(gl.DEPTH_TEST);
+		    gl.depthFunc(gl.LEQUAL);
+		
+			camera.init(gl.viewportWidth, gl.viewportHeight);
+		
+		};
+		
+		//	creates a program, attaches the shaders, and links the program
+		exports.program = function(vertex, fragment) {
+		
+			//	create the prgram, attach the shaders and link
+			program = gl.createProgram();
+		
+		    gl.attachShader(program, createShader("vertex", vertex));
+		    gl.attachShader(program, createShader("fragment", fragment));
+		    gl.linkProgram(program);
+		
+			//	did it work
+		    if(!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+				throw new Error("Could not initialise shaders");
+		    }
+			
+			//	bind the current program
+			gl.useProgram(program);
+		
+			//	get the attribute locations and enable their arrays
+			attributes.aVertexPosition = gl.getAttribLocation(program, "aVertexPosition");
+			gl.enableVertexAttribArray(attributes.aVertexPosition);
+		
+			attributes.aVertexColour = gl.getAttribLocation(program, "aVertexColour");
+		    gl.enableVertexAttribArray(attributes.aVertexColour);
+		
+			//	get the uniform locations
+			uniforms.uPMatrix = gl.getUniformLocation(program, "uPMatrix");
+			uniforms.uMVMatrix = gl.getUniformLocation(program, "uMVMatrix");
+		
+		};
+		
+		
+		exports.run = function() {
+			render();
+		};
+		
+		exports.camera = camera;
 		
 		exports.line = {
 		
@@ -237,7 +225,6 @@ define("/lib/webgl/core/main",
 		
 		};
 		
-		
 		exports.mesh = {
 		
 			__init__: function() {
@@ -285,66 +272,8 @@ define("/lib/webgl/core/main",
 		
 		};
 		
-		
-		exports.init = function(canvas) {
-		
-			getContext(canvas);
-			createProgram();
-		
-		    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-		    gl.clearDepth(1.0);
-		
-		    gl.enable(gl.DEPTH_TEST);
-		    gl.depthFunc(gl.LEQUAL);
-		
-		
-			camera.init(gl.viewportWidth, gl.viewportHeight);
-		
-		//*
-			object.create(exports.line, {
-				position: [0.0, 0.0, 0.0],
-				vertices: [
-			    	-1000000.0, 0.0, 0.0,
-					1000000.0, 0.0, 0.0
-				],
-				colours: [1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0],
-				size: 3,
-				items: 2
-			});
-		// */	
-		//*
-			object.create(exports.line, {
-				position: [0.0, 0.0, 0.0],
-				vertices: [
-			    	0.0, -1000000.0, 0.0,
-					0.0, 1000000.0, 0.0
-				],
-				colours: [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0],
-				size: 3,
-				items: 2
-			});	
-		// */
-		//*
-			object.create(exports.line, {
-				position: [0.0, 0.0, 0.0],
-				vertices: [
-			    	0.0, 0.0, 1000000.0,
-					0.0, 0.0, -1000000.0
-				],
-				colours: [0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
-				size: 3,
-				items: 2
-			});	
-		// */
-		
-		    canvas.onmousedown = handleMouseDown;
-		    document.onmouseup = handleMouseUp;
-		    document.onmousemove = handleMouseMove;
-		
-		
-			render();
-			
-		};
+		//exports.line = line;
+		//exports.mesh = mesh;
 		
 		/**
 		 * Provides requestAnimationFrame in a cross browser way.
