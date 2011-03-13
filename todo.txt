@@ -1,0 +1,2 @@
+allow multiple programs - return id as handlers
+switch program by id
