@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var util			= require("util"),
 	http			= require("http"),
 	static		 	= require("node-static"),

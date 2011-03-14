@@ -22,10 +22,8 @@ var object				= require("object"),
 	uniforms,
 	attributes,
 	objects,
-	createShader,
-	createProgram,
-	getContext,
-	setMatrixUniforms,
+	shader,
+	matrixUniforms,
 	render;
 
 
@@ -39,7 +37,7 @@ objects = [];
 
 
 //	creates and compiles a shader from source
-createShader = function(type, src) {
+shader = function(type, src) {
 
 	var shader;
 
@@ -59,7 +57,7 @@ createShader = function(type, src) {
 
 
 
-setMatrixUniforms = function () {
+matrixUniforms = function () {
 	try {
 		gl.uniformMatrix4fv(uniforms.uPMatrix, false, new Float32Array(camera.perspective));
 		gl.uniformMatrix4fv(uniforms.uMVMatrix, false, new Float32Array(modelView.matrix));
@@ -68,30 +66,6 @@ setMatrixUniforms = function () {
 		alert(e)
 	}
 }
-
-
-getContext = function(canvas) {
-
-	if(!some(["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"], function(name) {
-		try {
-			gl = canvas.getContext(name);
-			gl.viewportWidth = parseFloat(canvas.style.width, 10);
-			gl.viewportHeight = parseFloat(canvas.style.height, 10);
-
-			canvas.addEventListener("webglcontextcreationerror", function(e) {
-				console.error(e.statusMessage);
-			}, false);
-		}
-		catch(e) {}
-		if(gl) {
-	  		return true;
-		}
-		return false;
-	})) {
-		throw new Error("Could not initialise WebGL, sorry :-(");
-	}
-
-};
 
 
 
@@ -110,12 +84,11 @@ render = function() {
 
 	//	move the camera to it's initial position
 	camera.rotateY(-30);
+	camera.rotateX(-1);
 	camera.translate([-30, -8, -30]);
 
-	//	
+	//	has the camera been rotated
 	mat4.multiply(modelView.matrix, camera.rotation);
-
-	//mat4.multiply(modelView.matrix, moonRotationMatrix);
 
 	//	render objects
 	for(i = 0, l = objects.length; i < l; i++) {
@@ -124,10 +97,35 @@ render = function() {
 };
 
 
-//	initialise gl
-exports.init = function(canvas) {
+exports.context = function(canvas) {
 
-	getContext(canvas);
+	var width = canvas.width = parseFloat(canvas.style.width, 10),
+		height = canvas.height = parseFloat(canvas.style.height, 10);
+
+	if(!some(["webgl", "experimental-webgl", "webkit-3d", "moz-webgl"], function(name) {
+		try {
+			gl = canvas.getContext(name);
+			gl.viewportWidth = width;
+			gl.viewportHeight = height;
+
+			canvas.addEventListener("webglcontextcreationerror", function(e) {
+				console.error(e.statusMessage);
+			}, false);
+		}
+		catch(e) {}
+		if(gl) {
+	  		return true;
+		}
+		return false;
+	})) {
+		throw new Error("Could not initialise WebGL, sorry :-(");
+	}
+
+};
+
+
+//	initialise gl
+exports.init = function() {
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.clearDepth(1.0);
@@ -145,8 +143,8 @@ exports.program = function(vertex, fragment) {
 	//	create the prgram, attach the shaders and link
 	program = gl.createProgram();
 
-    gl.attachShader(program, createShader("vertex", vertex));
-    gl.attachShader(program, createShader("fragment", fragment));
+    gl.attachShader(program, shader("vertex", vertex));
+    gl.attachShader(program, shader("fragment", fragment));
     gl.linkProgram(program);
 
 	//	did it work
@@ -215,7 +213,7 @@ exports.line = {
 
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iBuffer);
 		gl.lineWidth(1);
-		setMatrixUniforms();
+		matrixUniforms();
 
 		gl.drawElements(this.type, this.indices.length, gl.UNSIGNED_SHORT, 0);
 
@@ -263,7 +261,7 @@ exports.mesh = {
 		gl.vertexAttribPointer(attributes.aVertexColour, 4, gl.FLOAT, false, 0, 0);
 
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iBuffer);
-		setMatrixUniforms();
+		matrixUniforms();
 		gl.drawElements(this.type, this.indices.length, gl.UNSIGNED_SHORT, 0);
 
 		modelView.pop();

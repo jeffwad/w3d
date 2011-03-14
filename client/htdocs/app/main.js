@@ -10,20 +10,18 @@ define("/app/main",
 			object				= require("object"),
 			gl					= require("/lib/webgl/core/main"),
 			vertex				= require("/lib/webgl/shaders/vertex.gl"),
-			fragment			= require("/lib/webgl/shaders/fragment.gl");
+			fragment			= require("/lib/webgl/shaders/fragment.gl"),
+			canvas;
 		
 		
-		var canvas = document.createElement("canvas");
-		canvas.width = self.innerWidth;
-		canvas.height = self.innerHeight;
+		canvas = document.createElement("canvas");
 		canvas.style.width = self.innerWidth + "px";
 		canvas.style.height = self.innerHeight + "px";
-		document.body.style.margin = 0;
-		document.body.style.padding = 0;
 		document.body.appendChild(canvas);
 		
+		gl.context(canvas);
 		
-		gl.init(canvas);
+		gl.init();
 		
 		gl.program(vertex, fragment);
 		
@@ -38,8 +36,7 @@ define("/app/main",
 			size: 3,
 			items: 2
 		});
-		// */	
-		//*
+		
 		object.create(gl.line, {
 			position: [0.0, 0.0, 0.0],
 			vertices: [
@@ -50,8 +47,7 @@ define("/app/main",
 			size: 3,
 			items: 2
 		});	
-		// */
-		//*
+		
 		object.create(gl.line, {
 			position: [0.0, 0.0, 0.0],
 			vertices: [
