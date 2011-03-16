@@ -71,10 +71,12 @@ exports.rotateXYByMouse = function(e) {
 		rotationMatrix = mat4.create();
 		
 	mat4.identity(rotationMatrix);
-	mat4.rotate(rotationMatrix, degToRad((x - lastX) / 10), [0, 1, 0]);
-	mat4.rotate(rotationMatrix, degToRad((y - lastY) / 250), [0, 1, 0]);
-	mat4.rotate(rotationMatrix, degToRad((x - lastX) / 250), [0, 0, 1]);
-	mat4.translate(rotationMatrix, [0, -(y - lastY)/20, 0]);
+	mat4.translate(rotationMatrix, [(x - lastX)/50, (y - lastY)/50, 0]);
+	mat4.rotate(rotationMatrix, degToRad((y - lastY) / 5), [1, 0, 0]);
+	mat4.rotate(rotationMatrix, degToRad((x - lastX) / 5), [0, 1, 0]);
+	mat4.rotate(rotationMatrix, degToRad(-(y - lastY) / 5), [0, 0, 1]);
+	mat4.translate(rotationMatrix, [-(x - lastX)/50, -(y - lastY)/50, 0]);
+
 	mat4.multiply(rotationMatrix, rotation, rotation);
 
 	lastX = x;
