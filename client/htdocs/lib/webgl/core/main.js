@@ -85,7 +85,7 @@ define("/lib/webgl/core/main",
 			//	move the camera to it's initial position
 			camera.rotateY(-30);
 			camera.rotateX(-1);
-			camera.translate([-30, -8, -30]);
+			camera.translate([-150, -30, -200]);
 		
 			//	has the camera been rotated
 			mat4.multiply(modelView.matrix, camera.rotation);

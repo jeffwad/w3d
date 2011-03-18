@@ -80,43 +80,43 @@ for (var i in colours) {
 
 // /*
 object.create(gl.mesh, {
-	position: [1.0, 1.0, -1.0],
+	position: [10.0, 10.0, -10.0],
     vertices: [
 		// Front face
-		-1.0, -1.0,  1.0,
-		1.0, -1.0,  1.0,
-		1.0,  1.0,  1.0,
-		-1.0,  1.0,  1.0,
+		-10.0, -10.0,  10.0,
+		10.0, -10.0,  10.0,
+		10.0,  10.0,  10.0,
+		-10.0,  10.0,  10.0,
 
 		// Back face
-		-1.0, -1.0, -1.0,
-		-1.0,  1.0, -1.0,
-		1.0,  1.0, -1.0,
-		1.0, -1.0, -1.0,
+		-10.0, -10.0, -10.0,
+		-10.0,  10.0, -10.0,
+		10.0,  10.0, -10.0,
+		10.0, -10.0, -10.0,
 
 		// Top face
-		-1.0,  1.0, -1.0,
-		-1.0,  1.0,  1.0,
-		1.0,  1.0,  1.0,
-		1.0,  1.0, -1.0,
+		-10.0,  10.0, -10.0,
+		-10.0,  10.0,  10.0,
+		10.0,  10.0,  10.0,
+		10.0,  10.0, -10.0,
 
 		// Bottom face
-		-1.0, -1.0, -1.0,
-		1.0, -1.0, -1.0,
-		1.0, -1.0,  1.0,
-		-1.0, -1.0,  1.0,
+		-10.0, -10.0, -10.0,
+		10.0, -10.0, -10.0,
+		10.0, -10.0,  10.0,
+		-10.0, -10.0,  10.0,
 
 		// Right face
-		1.0, -1.0, -1.0,
-		1.0,  1.0, -1.0,
-		1.0,  1.0,  1.0,
-		1.0, -1.0,  1.0,
+		10.0, -10.0, -10.0,
+		10.0,  10.0, -10.0,
+		10.0,  10.0,  10.0,
+		10.0, -10.0,  10.0,
 
 		// Left face
-		-1.0, -1.0, -1.0,
-		-1.0, -1.0,  1.0,
-		-1.0,  1.0,  1.0,
-		-1.0,  1.0, -1.0,
+		-10.0, -10.0, -10.0,
+		-10.0, -10.0,  10.0,
+		-10.0,  10.0,  10.0,
+		-10.0,  10.0, -10.0,
     ],
 	size: 3,
 	items: 24,
@@ -135,10 +135,10 @@ object.create(gl.mesh, {
 //	bind camera moves
 canvas.addEventListener("mousedown", function(e) {
 	gl.camera.startRotation(e);
-	document.addEventListener("mousemove", gl.camera.rotateXYByMouse, false);
+	document.addEventListener("mousemove", gl.camera.orbit, false);
 });
 document.addEventListener("mouseup", function(e) {
-	document.removeEventListener("mousemove", gl.camera.rotateXYByMouse, false);
+	document.removeEventListener("mousemove", gl.camera.orbit, false);
 	gl.camera.stopRotation(e);
 });
 

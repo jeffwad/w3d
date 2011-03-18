@@ -1,2 +1,13 @@
-allow multiple programs - return id as handlers
-switch program by id
+finish orbit function
+
+create a drawing object - for use in orientation above(maybe)
+
+test lighting
+
+test textures
+
+refractor mesh to use all buffer types (vertices, colours, indeces, textures, lighting normals)
+
+create mvc layer
+
+basic drawing commands

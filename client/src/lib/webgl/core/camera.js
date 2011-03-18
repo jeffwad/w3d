@@ -33,7 +33,7 @@ exports.rotation = rotation;
 //	initialise the camera
 exports.init = function(width, height) {
 
-	mat4.perspective(45, width / height, 0.1, 10000.0, perspective);
+	mat4.perspective(60, width / height, 0.1, 10000.0, perspective);
 
 };
 
@@ -64,18 +64,40 @@ exports.stopRotation = function(e) {
 };
 
 //	creates a rotation matrix about x and y based upon mouse movement
-exports.rotateXYByMouse = function(e) {
+exports.orbit = function(e) {
 
 	var x = e.clientX,
 		y = e.clientY,
+		deltaX = x - lastX,
+		deltaY = y - lastY,
 		rotationMatrix = mat4.create();
 		
 	mat4.identity(rotationMatrix);
-	mat4.translate(rotationMatrix, [(x - lastX)/50, (y - lastY)/50, 0]);
-	mat4.rotate(rotationMatrix, degToRad((y - lastY) / 5), [1, 0, 0]);
-	mat4.rotate(rotationMatrix, degToRad((x - lastX) / 5), [0, 1, 0]);
-	mat4.rotate(rotationMatrix, degToRad(-(y - lastY) / 5), [0, 0, 1]);
-	mat4.translate(rotationMatrix, [-(x - lastX)/50, -(y - lastY)/50, 0]);
+
+	
+	//mat4.translate(rotationMatrix, [(x - lastX)/50, (y - lastY)/50, 0]);
+
+	if(Math.abs(deltaX) > Math.abs(deltaY)) {
+		mat4.translate(rotationMatrix, [deltaX/20, 0, -deltaY/20]);
+		mat4.rotateY(rotationMatrix, degToRad(deltaX / 10));
+	}
+	else {
+		mat4.translate(rotationMatrix, [0, -deltaY/10, 0]);			
+		mat4.rotateX(rotationMatrix, degToRad(deltaY / 10));
+		mat4.rotateZ(rotationMatrix, degToRad(-deltaY / 10));
+		
+	}
+
+
+
+	//else {
+		//mat4.rotateZ(rotationMatrix, degToRad(deltaY / 10));
+		//mat4.rotateX(rotationMatrix, degToRad(deltaY / 10));
+	//} 
+//	;
+
+
+//	mat4.translate(rotationMatrix, [-(x - lastX)/50, -(y - lastY)/50, 0]);
 
 	mat4.multiply(rotationMatrix, rotation, rotation);
 
@@ -115,14 +137,14 @@ exports.rotateXByMouse = function(e) {
 //	rotate around the x axis
 exports.rotateX = function(deg) {
 
-	mat4.rotate(modelView.matrix, degToRad(deg), [1, 0, 0]);	
+	mat4.rotateX(modelView.matrix, degToRad(deg));	
 	
 };
 
 //	rotate around the y axis
 exports.rotateY = function(deg) {
 
-	mat4.rotate(modelView.matrix, degToRad(deg), [0, 1, 0]);	
+	mat4.rotateY(modelView.matrix, degToRad(deg));	
 	
 };
 
@@ -130,7 +152,7 @@ exports.rotateY = function(deg) {
 //	rotate around the z axis
 exports.rotateZ = function(deg) {
 
-	mat4.rotate(modelView.matrix, degToRad(deg), [0, 0, 1]);	
+	mat4.rotateZ(modelView.matrix, degToRad(deg));	
 	
 };
 
